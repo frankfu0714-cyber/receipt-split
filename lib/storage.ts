@@ -3,6 +3,7 @@ import { colorForIndex } from "./colors";
 
 const PEOPLE_KEY = "receipt-split:people";
 const HISTORY_KEY = "receipt-split:history";
+const DRAFT_KEY = "receipt-split:current-draft";
 
 const DEFAULT_PEOPLE: Person[] = [
   { id: "frank", name: "Frank", color: "#2dd4bf" },
@@ -56,4 +57,23 @@ export function saveToHistory(receipt: Receipt): void {
 export function deleteFromHistory(id: string): void {
   const history = loadHistory().filter((r) => r.id !== id);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+export function saveDraft(receipt: Receipt): void {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(receipt));
+}
+
+export function loadDraft(): Receipt | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as Receipt;
+  } catch {
+    return null;
+  }
+}
+
+export function clearDraft(): void {
+  localStorage.removeItem(DRAFT_KEY);
 }

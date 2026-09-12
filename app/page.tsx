@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import type { Person, ReceiptItem, Receipt, GeminiReceiptResponse } from "@/lib/types";
-import { loadPeople, savePeople, loadHistory, saveToHistory } from "@/lib/storage";
+import { loadPeople, savePeople, loadHistory, saveToHistory, saveDraft, loadDraft, clearDraft } from "@/lib/storage";
 import { calcSplit } from "@/lib/splitCalc";
 import { exportReceiptPdf } from "@/lib/exportPdf";
 import PeopleRoster from "@/components/PeopleRoster";
@@ -32,6 +32,10 @@ export default function Home() {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [historyCount, setHistoryCount] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [snapshotSaved, setSnapshotSaved] = useState(false);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftFeedbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load from localStorage once mounted
   useEffect(() => {
@@ -39,17 +43,23 @@ export default function Home() {
     setPeople(stored);
     setHistoryCount(loadHistory().length);
 
-    // Re-open a receipt from history
+    // Re-open a receipt from history (takes priority over draft)
     const reopen = sessionStorage.getItem("receipt-split:reopen");
     if (reopen) {
       sessionStorage.removeItem("receipt-split:reopen");
       try {
         const r = JSON.parse(reopen) as Receipt;
-        // Merge current people roster into the receipt's people for colors
         setReceipt(r);
         setPeople(r.people);
       } catch {
         // ignore
+      }
+    } else {
+      // Restore in-progress draft
+      const draft = loadDraft();
+      if (draft) {
+        setReceipt(draft);
+        setPeople(draft.people);
       }
     }
 
@@ -68,6 +78,18 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [people]);
+
+  // Debounce-save draft on every receipt mutation
+  useEffect(() => {
+    if (!mounted || !receipt) return;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      saveDraft(receipt);
+      setDraftSaved(true);
+      if (draftFeedbackRef.current) clearTimeout(draftFeedbackRef.current);
+      draftFeedbackRef.current = setTimeout(() => setDraftSaved(false), 2000);
+    }, 200);
+  }, [receipt, mounted]);
 
   const handleParsed = useCallback(
     (data: GeminiReceiptResponse, imageDataUrl: string) => {
@@ -105,10 +127,13 @@ export default function Home() {
     if (!receipt) return;
     saveToHistory(receipt);
     setHistoryCount(loadHistory().length);
-    alert("Saved to history!");
+    setSnapshotSaved(true);
+    setTimeout(() => setSnapshotSaved(false), 2000);
   }
 
   function startNew() {
+    if (receipt && !confirm("Discard current receipt?")) return;
+    clearDraft();
     setReceipt(null);
   }
 
@@ -132,7 +157,12 @@ export default function Home() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Receipt Split</h1>
-          <p className="text-sm text-muted mt-0.5">Upload · assign · split</p>
+          <p className="text-sm text-muted mt-0.5 flex items-center gap-2">
+            Upload · assign · split
+            {draftSaved && (
+              <span className="text-xs text-accent/80">✓ auto-saved</span>
+            )}
+          </p>
         </div>
         <Link
           href="/history"
@@ -257,7 +287,7 @@ export default function Home() {
                 onClick={saveCurrentReceipt}
                 className="flex-1 rounded-xl bg-accent text-black font-semibold py-3 text-sm hover:opacity-90 transition-opacity"
               >
-                Save to history
+                {snapshotSaved ? "Snapshot saved!" : "Save snapshot"}
               </button>
               <button
                 onClick={startNew}
