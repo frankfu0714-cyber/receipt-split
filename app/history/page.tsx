@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Receipt } from "@/lib/types";
 import { loadHistory, deleteFromHistory } from "@/lib/storage";
 import { calcSplit } from "@/lib/splitCalc";
+import { exportReceiptPdf } from "@/lib/exportPdf";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -134,6 +135,18 @@ export default function HistoryPage() {
                     className="flex-1 rounded-xl bg-card border border-border py-2 text-sm text-muted hover:text-foreground hover:border-accent transition-colors"
                   >
                     Reopen &amp; edit
+                  </button>
+                  <button
+                    onClick={() => exportReceiptPdf(r, totals)}
+                    className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted hover:text-foreground hover:border-foreground/30 transition-colors"
+                    title="Export PDF"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    PDF
                   </button>
                   <button
                     onClick={() => remove(r.id)}
