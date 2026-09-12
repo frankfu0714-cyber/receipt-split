@@ -119,6 +119,20 @@ export default function Home() {
     setReceipt((r) => r && { ...r, items });
   }
 
+  function removePerson(id: string) {
+    setPeople((prev) => prev.filter((p) => p.id !== id));
+    setReceipt((r) =>
+      r && {
+        ...r,
+        people: r.people.filter((p) => p.id !== id),
+        items: r.items.map((item) => ({
+          ...item,
+          assignedTo: item.assignedTo.filter((pid) => pid !== id),
+        })),
+      }
+    );
+  }
+
   function updateMeta(patch: Partial<Receipt>) {
     setReceipt((r) => r && { ...r, ...patch });
   }
@@ -182,7 +196,7 @@ export default function Home() {
         <h2 className="text-xs font-semibold text-muted uppercase tracking-wide">
           People
         </h2>
-        <PeopleRoster people={people} onChange={setPeople} />
+        <PeopleRoster people={people} onChange={setPeople} onRemove={removePerson} />
       </section>
 
       {/* Divider */}
