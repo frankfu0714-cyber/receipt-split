@@ -20,6 +20,7 @@ export interface Receipt {
   tip: number;
   people: Person[];
   total: number;
+  storeName?: string;
 }
 
 export interface GeminiReceiptResponse {
@@ -27,6 +28,7 @@ export interface GeminiReceiptResponse {
   tax: number;
   tip: number;
   total: number;
+  storeName?: string;
   notes?: string;
 }
 

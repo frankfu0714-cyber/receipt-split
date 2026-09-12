@@ -18,6 +18,7 @@ const receiptSchema = {
     tax: { type: SchemaType.NUMBER },
     tip: { type: SchemaType.NUMBER },
     total: { type: SchemaType.NUMBER },
+    storeName: { type: SchemaType.STRING },
     notes: { type: SchemaType.STRING },
   },
   required: ["items", "tax", "tip", "total"],
@@ -71,6 +72,7 @@ If an item has a quantity > 1, still list it once with the total line price.
 Extract tax, tip (if any), and the grand total.
 If a value is not present on the receipt, use 0.
 Deposits, surcharges, and fees should be included as items with descriptive names.
+Extract the store or restaurant name if visible (storeName field).
 Return only valid JSON matching the schema — no markdown, no explanation.`,
       },
     ]);

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Person, ReceiptItem, Receipt, GeminiReceiptResponse } from "@/lib/types";
 import { loadPeople, savePeople, loadHistory, saveToHistory } from "@/lib/storage";
 import { calcSplit } from "@/lib/splitCalc";
+import { exportReceiptPdf } from "@/lib/exportPdf";
 import PeopleRoster from "@/components/PeopleRoster";
 import ReceiptUpload from "@/components/ReceiptUpload";
 import ItemList from "@/components/ItemList";
@@ -84,6 +85,7 @@ export default function Home() {
         tax: data.tax ?? 0,
         tip: data.tip ?? 0,
         total: data.total ?? 0,
+        storeName: data.storeName,
         people,
       };
       setReceipt(r);
@@ -249,18 +251,31 @@ export default function Home() {
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-col gap-2 pt-2">
+            <div className="flex gap-2">
+              <button
+                onClick={saveCurrentReceipt}
+                className="flex-1 rounded-xl bg-accent text-black font-semibold py-3 text-sm hover:opacity-90 transition-opacity"
+              >
+                Save to history
+              </button>
+              <button
+                onClick={startNew}
+                className="rounded-xl border border-border px-4 py-3 text-sm text-muted hover:text-foreground hover:border-foreground/30 transition-colors"
+              >
+                New receipt
+              </button>
+            </div>
             <button
-              onClick={saveCurrentReceipt}
-              className="flex-1 rounded-xl bg-accent text-black font-semibold py-3 text-sm hover:opacity-90 transition-opacity"
+              onClick={() => exportReceiptPdf(receipt, totals)}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm text-muted hover:text-foreground hover:border-foreground/30 transition-colors"
             >
-              Save to history
-            </button>
-            <button
-              onClick={startNew}
-              className="rounded-xl border border-border px-4 py-3 text-sm text-muted hover:text-foreground hover:border-foreground/30 transition-colors"
-            >
-              New receipt
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Export PDF
             </button>
           </div>
         </div>
