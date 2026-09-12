@@ -7,9 +7,10 @@ import { newPerson } from "@/lib/storage";
 interface Props {
   people: Person[];
   onChange: (people: Person[]) => void;
+  onRemove?: (id: string) => void;
 }
 
-export default function PeopleRoster({ people, onChange }: Props) {
+export default function PeopleRoster({ people, onChange, onRemove }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [addValue, setAddValue] = useState("");
@@ -28,8 +29,15 @@ export default function PeopleRoster({ people, onChange }: Props) {
     setEditingId(null);
   }
 
-  function remove(id: string) {
-    onChange(people.filter((p) => p.id !== id));
+  function remove(e: React.MouseEvent, p: Person) {
+    e.preventDefault(); // keep input focused so onBlur doesn't race with confirm
+    if (!confirm(`Remove ${p.name} from all items?`)) return;
+    setEditingId(null);
+    if (onRemove) {
+      onRemove(p.id);
+    } else {
+      onChange(people.filter((x) => x.id !== p.id));
+    }
   }
 
   function addPerson() {
@@ -62,8 +70,8 @@ export default function PeopleRoster({ people, onChange }: Props) {
               style={{ color: p.color }}
             />
             <button
-              onMouseDown={() => remove(p.id)}
-              className="text-muted hover:text-foreground text-xs px-1"
+              onMouseDown={(e) => remove(e, p)}
+              className="text-red-400 hover:text-red-300 text-xs px-1 leading-none"
             >
               ✕
             </button>
