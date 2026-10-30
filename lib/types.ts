@@ -9,6 +9,7 @@ export interface ReceiptItem {
   name: string;
   price: number;
   assignedTo: string[]; // person IDs
+  shares?: Record<string, number>; // optional relative weights; defaults to 1 each
 }
 
 export interface Receipt {
