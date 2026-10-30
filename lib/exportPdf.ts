@@ -1,3 +1,4 @@
+import { itemShare } from "./splitCalc";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { Receipt, PersonTotal } from "./types";
@@ -56,7 +57,10 @@ export function exportReceiptPdf(receipt: Receipt, totals: PersonTotal[]) {
 
   const itemRows = receipt.items.map((item) => {
     const names = item.assignedTo
-      .map((id) => receipt.people.find((p) => p.id === id)?.name ?? id)
+      .map((id) => {
+        const name = receipt.people.find((p) => p.id === id)?.name ?? id;
+        return item.shares ? `${name} (${itemShare(item, id)} shares)` : name;
+      })
       .join(", ");
     return [item.name, `$${item.price.toFixed(2)}`, names || "shared"];
   });

@@ -18,10 +18,13 @@ export function calcSplit(
 
   for (const item of items) {
     if (item.assignedTo.length === 0) continue;
-    const share = item.price / item.assignedTo.length;
-    for (const pid of item.assignedTo) {
-      if (pid in subtotals) subtotals[pid] += share;
-    }
+    const recipients = people.filter((p) => item.assignedTo.includes(p.id));
+    if (recipients.length === 0) continue;
+    const weights = recipients.map((p) => itemShare(item, p.id));
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    recipients.forEach((p, index) => {
+      subtotals[p.id] += item.price * weights[index] / totalWeight;
+    });
   }
 
   // Shared pool: tax + tip + unassigned items
@@ -53,4 +56,10 @@ export function calcSplit(
     const total = Math.round((subtotal + sharedShare) * 100) / 100;
     return { person: p, subtotal, sharedShare, total };
   });
+}
+
+// Old saved receipts and newly selected people retain equal shares by default.
+export function itemShare(item: ReceiptItem, personId: string): number {
+  const value = item.shares?.[personId];
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 1;
 }
