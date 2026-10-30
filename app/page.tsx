@@ -34,6 +34,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const [snapshotSaved, setSnapshotSaved] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftFeedbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -84,11 +85,20 @@ export default function Home() {
     if (!mounted || !receipt) return;
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
-      saveDraft(receipt);
-      setDraftSaved(true);
+      try {
+        const result = saveDraft(receipt);
+        setDraftSaved(true);
+        setSaveMessage(result.photoOmitted ? "Saved without receipt photos to fit browser storage. Items and splits are preserved." : "");
+      } catch {
+        setDraftSaved(false);
+        setSaveMessage("Could not auto-save. Keep this page open and export a PDF backup before leaving.");
+      }
       if (draftFeedbackRef.current) clearTimeout(draftFeedbackRef.current);
       draftFeedbackRef.current = setTimeout(() => setDraftSaved(false), 2000);
     }, 200);
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
   }, [receipt, mounted]);
 
   const handleParsed = useCallback(
@@ -139,10 +149,16 @@ export default function Home() {
 
   function saveCurrentReceipt() {
     if (!receipt) return;
-    saveToHistory(receipt);
-    setHistoryCount(loadHistory().length);
-    setSnapshotSaved(true);
-    setTimeout(() => setSnapshotSaved(false), 2000);
+    try {
+      const result = saveToHistory(receipt);
+      setHistoryCount(loadHistory().length);
+      setSnapshotSaved(true);
+      setSaveMessage(result.photoOmitted ? "Snapshot saved without receipt photos to fit browser storage. Items and splits are preserved." : "");
+      setTimeout(() => setSnapshotSaved(false), 2000);
+    } catch {
+      setSnapshotSaved(false);
+      setSaveMessage("Could not save snapshot. Keep this page open and export a PDF backup before leaving.");
+    }
   }
 
   function startNew() {
@@ -293,6 +309,8 @@ export default function Home() {
           {totals.length > 0 && (
             <TotalsPanel totals={totals} grandTotal={grandTotal} />
           )}
+
+          {saveMessage && <p role="status" className="text-sm text-accent">{saveMessage}</p>}
 
           {/* Actions */}
           <div className="flex flex-col gap-2 pt-2">
