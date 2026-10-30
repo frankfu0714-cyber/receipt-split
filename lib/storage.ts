@@ -46,12 +46,53 @@ export function loadHistory(): Receipt[] {
   }
 }
 
-export function saveToHistory(receipt: Receipt): void {
+export interface SaveResult {
+  photoOmitted: boolean;
+}
+
+function withoutPhoto(receipt: Receipt): Receipt {
+  const { imageDataUrl: _photo, ...data } = receipt;
+  return data;
+}
+
+function isQuotaError(error: unknown): boolean {
+  return error instanceof DOMException &&
+    (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED");
+}
+
+// Retry with receipt data only. Never evict snapshots to make room for a photo.
+function persistReceipt(key: string, data: Receipt | Receipt[]): SaveResult {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    return { photoOmitted: false };
+  } catch (error) {
+    if (!isQuotaError(error)) throw error;
+  }
+  const compact = Array.isArray(data) ? data.map(withoutPhoto) : withoutPhoto(data);
+  try {
+    localStorage.setItem(key, JSON.stringify(compact));
+  } catch (error) {
+    if (!isQuotaError(error)) throw error;
+    // Older stored photos may occupy nearly all available space.
+    const otherKey = key === HISTORY_KEY ? DRAFT_KEY : HISTORY_KEY;
+    const raw = localStorage.getItem(otherKey);
+    if (raw) {
+      const other = JSON.parse(raw) as Receipt | Receipt[];
+      localStorage.setItem(otherKey, JSON.stringify(
+        Array.isArray(other) ? other.map(withoutPhoto) : withoutPhoto(other)
+      ));
+    }
+    localStorage.setItem(key, JSON.stringify(compact));
+  }
+  return { photoOmitted: true };
+}
+
+export function saveToHistory(receipt: Receipt): SaveResult {
   const history = loadHistory();
   // Remove existing entry with same id if re-saving
   const filtered = history.filter((r) => r.id !== receipt.id);
   const updated = [receipt, ...filtered].slice(0, 20);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+  return persistReceipt(HISTORY_KEY, updated);
 }
 
 export function deleteFromHistory(id: string): void {
@@ -59,8 +100,8 @@ export function deleteFromHistory(id: string): void {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
-export function saveDraft(receipt: Receipt): void {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(receipt));
+export function saveDraft(receipt: Receipt): SaveResult {
+  return persistReceipt(DRAFT_KEY, receipt);
 }
 
 export function loadDraft(): Receipt | null {
