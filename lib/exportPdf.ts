@@ -111,8 +111,10 @@ export function exportReceiptPdf(receipt: Receipt, totals: PersonTotal[]) {
   doc.text("WHO OWES WHAT", margin, y);
   y += 3;
 
-  const personRows = totals
-    .filter((t) => t.total > 0)
+  const visibleTotals = totals.filter((t) => t.total > 0);
+  const sumDisplayed = (key: "subtotal" | "sharedShare" | "total") =>
+    (visibleTotals.reduce((sum, t) => sum + Math.round(t[key] * 100), 0) / 100).toFixed(2);
+  const personRows = visibleTotals
     .map((t) => [
       t.person.name,
       `$${t.subtotal.toFixed(2)}`,
@@ -124,6 +126,18 @@ export function exportReceiptPdf(receipt: Receipt, totals: PersonTotal[]) {
     startY: y,
     head: [["Person", "Items subtotal", "Tax/tip share", "Total"]],
     body: personRows,
+    foot: [["Total", `$${sumDisplayed("subtotal")}`, `$${sumDisplayed("sharedShare")}`, `$${sumDisplayed("total")}`]],
+    showFoot: "lastPage",
+    didParseCell: (cell) => {
+      if (cell.section === "foot" && cell.column.index > 0) cell.cell.styles.halign = "right";
+    },
+    footStyles: {
+      fillColor: [248, 248, 248],
+      textColor: [30, 30, 30],
+      fontStyle: "bold",
+      lineColor: [220, 220, 220],
+      lineWidth: 0.3,
+    },
     margin: { left: margin, right: margin },
     styles: {
       fontSize: 9,
@@ -146,6 +160,16 @@ export function exportReceiptPdf(receipt: Receipt, totals: PersonTotal[]) {
     },
     theme: "plain",
   });
+
+  const summaryEnd = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  if (summaryEnd + 10 > pageH - margin) doc.addPage();
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(140, 140, 140);
+  doc.text(
+    "Columns sum displayed amounts independently; rounding can cause small differences.",
+    margin, summaryEnd + 10 > pageH - margin ? margin : summaryEnd + 5
+  );
 
   // ── Footer ───────────────────────────────────────────────────────────
   doc.setFont("helvetica", "normal");
